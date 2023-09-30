@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using MessengerServer.DB;
+using MessengerServer.Exeptions;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,7 +23,6 @@ namespace MessengerServer
 
             //Отправка первого сообщения
 
-            string[] Drivers = Environment.GetLogicalDrives();
             const string FirstMessage = "HEAR_ME?";
             SendAnswer(_stream, FirstMessage);
 
@@ -47,10 +45,10 @@ namespace MessengerServer
                 LogIn(log_in_str, ref _IdClient);
                 //Результат входа
             }
-            else if (request == "AUTH")
+            else if (request == "REGIST")
             {
                 string auth_str = GetRequest(_stream);
-                Authorization(auth_str, ref _IdClient);
+                Registration(auth_str, ref _IdClient, _stream);
                 //Результат авторизации
             }
             else
@@ -97,9 +95,29 @@ namespace MessengerServer
             return "SUCCESS";
         }
 
-        private static string Authorization(string auth_str, ref int? id)
+        private static string Registration(string auth_str, ref int? id, NetworkStream _stream)
         {
             //Обращение к БД, проверка совпадений, результат
+            string[] tmp = auth_str.Split("::");
+            string username = tmp[0], user_password = tmp[1];
+
+            if (!DataBase.CheckUniqueLogin(username))
+                return "ERROR";
+
+            SendAnswer(_stream, "SUCCESS");
+
+            UserData ud = new UserData(GetRequest(_stream));
+            
+            try
+            {
+                int user_id = DataBase.Registration(username, user_password, ud);
+                SendAnswer(_stream, user_id.ToString());
+            }
+            catch (RegistrationError)
+            {
+                SendAnswer(_stream, "ERROR");
+            }
+            
             return "SUCCESS";
         }
 

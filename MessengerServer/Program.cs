@@ -1,4 +1,4 @@
-﻿using System.IO;
+﻿using MessengerServer.DB;
 using System.Net.Sockets;
 using System.Net;
 using System.Text;
@@ -8,6 +8,9 @@ namespace MessengerServer
 {
     internal partial class Program
     {
+        private static IDataBase _dataBase = new pgDataBase("Host=localhost;Port=5432;Database=Crassage;Username=group1;Password=12345");
+        public static IDataBase DataBase { get => _dataBase;  }
+
         static void Main(string[] args)
         {
             StartServer();
@@ -24,11 +27,14 @@ namespace MessengerServer
 
             string request = "";
 
+
+
             while (request != "STOP_WORK")
             {
                 TcpClient _client = _server.AcceptTcpClient();      //Ожидание подключения клиента
 
-                Thread myThread1 = new Thread(new ParameterizedThreadStart(ConnectClient));
+                Thread myThread1 = new Thread(ConnectClient);
+                myThread1.Start();
             }
         }
 
