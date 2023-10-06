@@ -24,5 +24,8 @@ namespace MessengerServer.DB
         /// <returns>Возвращает id зарегистрированного пользователя</returns>
         /// <exception cref="RegistrationError">Ошибка регистрации в одной из таблиц.</exception>
         int Registration(string username, string password, UserData userData);
+
+        int Log_In(string username, string password);
+        UserData GetUserData(int user_id);
     }
 }

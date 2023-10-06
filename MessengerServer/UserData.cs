@@ -9,7 +9,7 @@ namespace MessengerServer
     public struct UserData
     {
 
-        private string _firstName;
+        private string _firstName = "";
         private string _lastName;
         public string DateOfBirth { get; set; }
 
@@ -30,7 +30,8 @@ namespace MessengerServer
 
         public string FirstName {  get => _firstName;  }
         public string LastName {  get => _lastName;  }
- 
+
+        public override string ToString() => $"{FirstName}::{LastName}::{DateOfBirth}";
 
     }
 }

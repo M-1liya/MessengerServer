@@ -33,8 +33,8 @@ namespace MessengerServer
             {
                 TcpClient _client = _server.AcceptTcpClient();      //Ожидание подключения клиента
 
-                Thread myThread1 = new Thread(ConnectClient);
-                myThread1.Start();
+                Thread myThread1 = new Thread( new ParameterizedThreadStart(ConnectClient));
+                myThread1.Start(_client);
             }
         }
 

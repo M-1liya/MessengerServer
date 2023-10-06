@@ -15,7 +15,7 @@ namespace MessengerServer
             int? _IdClient = null;
             TcpClient client;
 
-            if (_client == null || _client is not TcpClient) return;
+            if (_client == null || !(_client is TcpClient)) return;
             client = (TcpClient)_client;
 
             NetworkStream _stream = client.GetStream();       //Получение потока
@@ -37,22 +37,27 @@ namespace MessengerServer
                 return;
             }
 
-            request = GetRequest(_stream);
+            string EnterResult = "";
+            while(EnterResult != "SUCCESS") //Цикл входа и регистрации.
+            {
 
-            if (request == "LOG_IN")
-            {
-                string log_in_str = GetRequest(_stream);
-                LogIn(log_in_str, ref _IdClient);
-                //Результат входа
+                request = GetRequest(_stream);
+
+                if (request == "LOG_IN")
+                {
+                    string log_in_str = GetRequest(_stream);
+                    EnterResult = LogIn(log_in_str, ref _IdClient, _stream);
+                    //Результат входа
+                }
+                else if (request == "REGIST")
+                {
+                    string auth_str = GetRequest(_stream);
+                    EnterResult = Registration(auth_str, ref _IdClient, _stream);
+                    //Результат авторизации
+                }
+                else
+                    SendAnswer(_stream, "Error: Expected 'LOG_IN' or 'REGIST'");
             }
-            else if (request == "REGIST")
-            {
-                string auth_str = GetRequest(_stream);
-                Registration(auth_str, ref _IdClient, _stream);
-                //Результат авторизации
-            }
-            else
-                SendAnswer(_stream, "Error: Expected 'LOG_IN' or 'AUTH'");
 
 
 
@@ -89,10 +94,44 @@ namespace MessengerServer
 
 
 
-        private static string LogIn(string log_in_str, ref int? id)
+        private static string LogIn(string log_in_str, ref int? id, NetworkStream _stream)
         {
             //Обращение к БД проверка наличия пользователя и ответ
-            return "SUCCESS";
+            string[] tmp = log_in_str.Split("::");
+            string username = tmp[0], user_password = tmp[1];
+
+            if (DataBase.CheckUniqueLogin(username))
+            {
+                SendAnswer(_stream, "ERROR");
+                return "ERROR";
+            }
+
+            try
+            {
+                int user_id = DataBase.Log_In(username, user_password);
+
+                if(user_id > 0)
+                {
+                    UserData userData = DataBase.GetUserData(user_id);
+                    if (userData.FirstName != "")
+                    {
+                        SendAnswer(_stream, userData.ToString());
+                        return "SUCCESS";
+                    }
+                }
+                
+            }
+            catch (LogInError e)
+            {
+                if(e.Message == "Ошибка с чтением")
+                    SendAnswer(_stream, "ERROR");
+                else
+                    SendAnswer(_stream, e.Message);
+                return "ERROR";
+            }
+
+            SendAnswer(_stream, "ERROR");
+            return "ERROR";
         }
 
         private static string Registration(string auth_str, ref int? id, NetworkStream _stream)
@@ -102,7 +141,10 @@ namespace MessengerServer
             string username = tmp[0], user_password = tmp[1];
 
             if (!DataBase.CheckUniqueLogin(username))
+            {
+                SendAnswer(_stream, "ERROR");
                 return "ERROR";
+            }
 
             SendAnswer(_stream, "SUCCESS");
 
@@ -116,6 +158,7 @@ namespace MessengerServer
             catch (RegistrationError)
             {
                 SendAnswer(_stream, "ERROR");
+                return "ERROR";
             }
             
             return "SUCCESS";

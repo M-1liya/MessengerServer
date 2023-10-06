@@ -21,6 +21,58 @@ namespace MessengerServer.DB
 
 
 
+        public int Log_In(string username, string password)
+        {
+            try
+            {
+                using NpgsqlCommand command = new NpgsqlCommand 
+                    (
+                        $"SELECT  user_id, password_hash, salt FROM user_accounts WHERE username = '{username}' ;",
+                    connection);
+
+
+                using NpgsqlDataReader reader = command.ExecuteReader();
+                if(reader.Read() != false ) 
+                {
+                    if (reader["password_hash"].ToString() == _hashPassword(password, reader["salt"].ToString()))
+                    {
+                        return int.Parse(reader["user_id"].ToString());
+                    }
+                    else
+                        throw new LogInError("Неверный пароль");
+
+                }
+                else
+                {
+                    throw new LogInError("Ошибка с чтением");
+                }
+
+            }
+            catch (Exception)
+            {
+                return -1;
+            }
+
+        }
+
+        public UserData GetUserData(int user_id)
+        {
+            using NpgsqlCommand command = new NpgsqlCommand
+                (
+                    $"SELECT * FROM profiles WHERE id = {user_id} ;",
+                connection);
+
+
+            using NpgsqlDataReader reader = command.ExecuteReader();
+            if (reader.Read() != false)
+            {
+                UserData user = new UserData(reader["first_name"].ToString(), reader["last_name"].ToString(), reader["date_of_birth"].ToString());
+                return user;
+
+            }
+
+            return new UserData();
+        }
 
         public bool CheckUniqueLogin(string username)
         {
