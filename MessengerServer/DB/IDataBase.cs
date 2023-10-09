@@ -27,5 +27,13 @@ namespace MessengerServer.DB
 
         int Log_In(string username, string password);
         UserData GetUserData(int user_id);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="chat_id"></param>
+        /// <param name="str_messageBox">Строка вида id_client::id_adresse::message::time</param>
+        /// <returns></returns>
+        int SendMessageTo(int chat_id, string str_messageBox);
     }
 }

@@ -38,7 +38,7 @@ namespace MessengerServer
             }
 
             string EnterResult = "";
-            while(EnterResult != "SUCCESS") //Цикл входа и регистрации.
+            while(_IdClient == null || _IdClient < 0) //Цикл входа и регистрации.
             {
 
                 request = GetRequest(_stream);
@@ -46,13 +46,13 @@ namespace MessengerServer
                 if (request == "LOG_IN")
                 {
                     string log_in_str = GetRequest(_stream);
-                    EnterResult = LogIn(log_in_str, ref _IdClient, _stream);
+                    _IdClient = LogIn(log_in_str, ref _IdClient, _stream);
                     //Результат входа
                 }
                 else if (request == "REGIST")
                 {
                     string auth_str = GetRequest(_stream);
-                    EnterResult = Registration(auth_str, ref _IdClient, _stream);
+                    _IdClient = Registration(auth_str, ref _IdClient, _stream);
                     //Результат авторизации
                 }
                 else
@@ -71,14 +71,14 @@ namespace MessengerServer
                     string[] arrRequest = request.Split("::");
                     if (arrRequest[0] == "SEND")
                     {
-                        if (arrRequest.Length < 3)
+                        if (arrRequest.Length < 5)
                         {
                             SendAnswer(_stream, "WRONG_TEMPLATE");
                             continue;
                         }
 
                         if (arrRequest.Length > 3)
-                            for (int i = 3; i < arrRequest.Length; i++)
+                            for (int i = 5; i < arrRequest.Length; i++)
                                 arrRequest[2] += arrRequest[i];
 
                         SendMessageToClient(_IdClient.ToString(), arrRequest[1], arrRequest[2]);
@@ -94,7 +94,7 @@ namespace MessengerServer
 
 
 
-        private static string LogIn(string log_in_str, ref int? id, NetworkStream _stream)
+        private static int LogIn(string log_in_str, ref int? id, NetworkStream _stream)
         {
             //Обращение к БД проверка наличия пользователя и ответ
             string[] tmp = log_in_str.Split("::");
@@ -103,7 +103,7 @@ namespace MessengerServer
             if (DataBase.CheckUniqueLogin(username))
             {
                 SendAnswer(_stream, "ERROR");
-                return "ERROR";
+                return -1;
             }
 
             try
@@ -116,7 +116,7 @@ namespace MessengerServer
                     if (userData.FirstName != "")
                     {
                         SendAnswer(_stream, userData.ToString());
-                        return "SUCCESS";
+                        return user_id;
                     }
                 }
                 
@@ -127,14 +127,14 @@ namespace MessengerServer
                     SendAnswer(_stream, "ERROR");
                 else
                     SendAnswer(_stream, e.Message);
-                return "ERROR";
+                return -1;
             }
 
             SendAnswer(_stream, "ERROR");
-            return "ERROR";
+            return -1;
         }
 
-        private static string Registration(string auth_str, ref int? id, NetworkStream _stream)
+        private static int Registration(string auth_str, ref int? id, NetworkStream _stream)
         {
             //Обращение к БД, проверка совпадений, результат
             string[] tmp = auth_str.Split("::");
@@ -143,7 +143,7 @@ namespace MessengerServer
             if (!DataBase.CheckUniqueLogin(username))
             {
                 SendAnswer(_stream, "ERROR");
-                return "ERROR";
+                return -1;
             }
 
             SendAnswer(_stream, "SUCCESS");
@@ -154,14 +154,14 @@ namespace MessengerServer
             {
                 int user_id = DataBase.Registration(username, user_password, ud);
                 SendAnswer(_stream, user_id.ToString());
+                return user_id;
             }
             catch (RegistrationError)
             {
                 SendAnswer(_stream, "ERROR");
-                return "ERROR";
+                return -1;
             }
             
-            return "SUCCESS";
         }
 
 
@@ -169,35 +169,14 @@ namespace MessengerServer
         /// <param name="id_addressee">id получателя сообщения</param>
         /// <param name="message"></param>
         /// <param name="_stream"></param>
-        private static void SendMessageToClient(string? id_client, string id_addressee, string message)
+        private static void SendMessageToClient(string str_chat_id, string? id_client, string id_addressee, string message, string time)
         {
-            //Поиск получателя по БД, если есть такой, то ноходим его файл и записываем в него сообщение
+            /* Если ранее занятой комнаты нет, то она выделяется и записывается сообщение,  
+            иначе проверяется доступ и после записывается сообщение. */
 
-            string ME = id_client == null? "" : id_client;
-            string[] lines = File.ReadAllLines(id_addressee + ".txt");
+            int chat_id = str_chat_id == "null" ? -1 : int.Parse(str_chat_id);
 
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i] == $"FROM::{ME}:")
-                {
-                    for (int j = i; j < lines.Length; j++)
-                        if (lines[j + 1] == $"<{ME}>")
-                        {
-                            lines[j] = message;
-                            break;
-                        }
-                    break;
-                }
-                if (i + 1  == lines.Length)
-                {
-                    File.AppendAllText(id_addressee,
-                        $"FROM::{ME}:\n" +
-                        $"{message}\n" +
-                        $"\n" +
-                        $"<{ME}>");
-                }
-            }
-
+            
 
         }
     }

@@ -3,6 +3,7 @@ using MessengerServer.Exeptions;
 using System.Data;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 
 namespace MessengerServer.DB
 {
@@ -54,7 +55,6 @@ namespace MessengerServer.DB
             }
 
         }
-
         public UserData GetUserData(int user_id)
         {
             using NpgsqlCommand command = new NpgsqlCommand
@@ -73,7 +73,6 @@ namespace MessengerServer.DB
 
             return new UserData();
         }
-
         public bool CheckUniqueLogin(string username)
         {
             using NpgsqlCommand command = new NpgsqlCommand($"SELECT * FROM user_accounts WHERE username = '{username}';", connection);
@@ -85,8 +84,7 @@ namespace MessengerServer.DB
             else
                 return true;
 
-        }
-        
+        }        
         public int Registration(string username, string password, UserData userData)
         {
             string salt = _generateSalt();
@@ -96,7 +94,7 @@ namespace MessengerServer.DB
             
             NpgsqlCommand command = new NpgsqlCommand //Регистрация в таблицу аккаунтов
                 (
-                    $"INSERT INTO user_accounts (username, passwor_hash, salt) VALUE ('{username}', '{hash_password}', '{salt}') ;",
+                    $"INSERT INTO user_accounts (username, password_hash, salt) VALUES ('{username}', '{hash_password}', '{salt}') ;",
                 connection);
 
             if (command.ExecuteNonQuery() == 0)
@@ -116,7 +114,7 @@ namespace MessengerServer.DB
             command = new NpgsqlCommand //Регистрация в таблицу пользователей
                 (
                     "INSERT INTO profiles (id, first_name, last_name, date_of_birth)" +
-                    $" VALUE ('{userData.FirstName}', '{userData.LastName}', '{userData.DateOfBirth}') ;",
+                    $" VALUES ({user_id}, '{userData.FirstName}', '{userData.LastName}', '{userData.DateOfBirth}') ;",
                 connection);
 
             if (command.ExecuteNonQuery() == 0)
@@ -134,6 +132,93 @@ namespace MessengerServer.DB
             return user_id;
         }
 
+
+        public int SendMessageTo(int chat_id, string str_messageBox, int id_client)
+        {
+            int NameTable = 1;
+            while(chat_id <= 0)//Поиск свободной комнаты по таблицам
+            {
+                try
+                {
+                    using NpgsqlCommand _command = new NpgsqlCommand(
+                        $"SELECT number FROM dialogs{1000 * NameTable - 999}_{1000 * NameTable - 1} WHERE participants is null ;",
+                    connection);
+
+                    using NpgsqlDataReader _reader = _command.ExecuteReader();
+
+                    if(_reader.Read())
+                    {
+                        int.TryParse(_reader["number"].ToString(), out chat_id);
+                    }
+
+                }
+                catch(NpgsqlException ex)
+                {
+                    if (ex.SqlState == "42P01") // Код состояния, который соответствует "таблица не найдена"
+                    {
+                        _createDialogTable($"{1000 * NameTable - 999}_{1000 * NameTable - 1}", $"1000 * NameTable - 1");
+                        continue;
+                    }
+                }
+                catch (Exception)
+                {
+                    return -1;
+                }
+
+                NameTable++;
+            }
+
+            
+            while (1000 * NameTable - 1 < chat_id)//Определение имени таблицы
+                NameTable++;
+
+            //Проверка есть ли доступ к этой комнате у id_client
+            NpgsqlCommand command = new NpgsqlCommand(
+                        $"SELECT participants FROM dialogs{1000 * NameTable - 999}_{1000 * NameTable - 1} " +
+                        $"WHERE number = {chat_id};",
+                    connection);
+
+            NpgsqlDataReader reader = command.ExecuteReader();
+
+            bool flag = false;  //переменная разрешающая или запрещающая писать в данную комнату
+            if (reader.Read())
+            {
+                string[] participants = reader["participants"].ToString().Split("::");
+
+                if (participants[0] == "null") flag = true;
+
+                foreach (string p in participants)
+                {
+                    if (int.Parse(p) == id_client)
+                    {
+                        flag = true;
+                        break;
+                    }
+                }
+            }
+
+            if (flag)//запись сообщения
+            {
+                command = new NpgsqlCommand(
+                           $"UPDATE dialogs{1000 * NameTable - 999}_{1000 * NameTable - 1} " +
+                           $"SET content = content || '{str_messageBox}' " +
+                           $"WHERE number = {chat_id};",
+                       connection);
+                command.ExecuteNonQuery();
+                return chat_id;
+            }
+            else
+                return -1;
+
+        }
+
+        private void _createDialogTable(string NameTable, string maxValue)
+        {
+            using NpgsqlCommand _command = new NpgsqlCommand(
+                        $"SELECT create_dialogs_table('dialogs{NameTable}', {maxValue});",
+                    connection);
+            _command.ExecuteNonQuery();
+        }
         private static string _generateSalt()
         {
             byte[] saltBytes = new byte[16];
