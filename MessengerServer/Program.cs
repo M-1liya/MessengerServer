@@ -35,6 +35,8 @@ namespace MessengerServer
 
                 Thread myThread1 = new Thread( new ParameterizedThreadStart(ConnectClient));
                 myThread1.Start(_client);
+
+
             }
         }
 
@@ -60,28 +62,12 @@ namespace MessengerServer
         private static string GetRequest(NetworkStream stream)
         {
             string request = "";
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[1024 * 5];
 
             int lenght = stream.Read(buffer, 0, buffer.Length);
             if (lenght > 0) request = Encoding.UTF8.GetString(buffer, 0, lenght);
 
             return request;
-        }
-
-        /// <param name="path"></param>
-        /// <returns> Возвращает строку-ответ из имен файлов и директорий, находящихся по адресу пути</returns>
-        private static string CreateAnswer(string path)
-        {
-            string result = "";
-
-            string[] dir = Directory.GetFileSystemEntries(path);
-            foreach (string dirEntry in dir)
-            {
-                result += dirEntry + "\n";
-            }
-
-
-            return result != "" ? result : "Здесь пока что пусто";
         }
 
 

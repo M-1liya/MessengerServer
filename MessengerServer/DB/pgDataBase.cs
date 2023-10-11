@@ -133,7 +133,7 @@ namespace MessengerServer.DB
         }
 
 
-        public int SendMessageTo(int chat_id, string str_messageBox, int id_client)
+        public int SendMessageTo(int chat_id, string str_messageBox, int id_client, string id_recipient)
         {
             int NameTable = 1;
             while(chat_id <= 0)//Поиск свободной комнаты по таблицам
@@ -185,7 +185,13 @@ namespace MessengerServer.DB
             {
                 string[] participants = reader["participants"].ToString().Split("::");
 
-                if (participants[0] == "null") flag = true;
+                if (participants[0] == "null")
+                {
+                    using NpgsqlCommand command1 = new NpgsqlCommand(
+                        $"UPDATE dialogs{1000 * NameTable - 999}_{1000 * NameTable - 1} SET participants = '{id_client + "::" + id_recipient}'" +
+                        $"WHERE number = {chat_id};"
+                        , connection);
+                }
 
                 foreach (string p in participants)
                 {
@@ -201,10 +207,11 @@ namespace MessengerServer.DB
             {
                 command = new NpgsqlCommand(
                            $"UPDATE dialogs{1000 * NameTable - 999}_{1000 * NameTable - 1} " +
-                           $"SET content = content || '{str_messageBox}' " +
+                           $"SET content = content || '{id_client + "::" + str_messageBox + "\n"}' " +
                            $"WHERE number = {chat_id};",
                        connection);
                 command.ExecuteNonQuery();
+
                 return chat_id;
             }
             else

@@ -14,7 +14,6 @@ namespace MessengerServer.DB
         /// <param name="username"></param>
         /// <returns>Возвращает false если пользователь с таким логином уже существует, иначе true</returns>
         bool CheckUniqueLogin(string username);
-
         /// <summary>
         /// Регистрация пользователя в БД
         /// </summary>
@@ -24,16 +23,15 @@ namespace MessengerServer.DB
         /// <returns>Возвращает id зарегистрированного пользователя</returns>
         /// <exception cref="RegistrationError">Ошибка регистрации в одной из таблиц.</exception>
         int Registration(string username, string password, UserData userData);
-
         int Log_In(string username, string password);
         UserData GetUserData(int user_id);
-
         /// <summary>
-        /// 
+        /// Отправка сообщения в чат с id = chat_id, 
+        /// <br>если chat_id меньше или равен 0 то чат выделяется.</br>
         /// </summary>
-        /// <param name="chat_id"></param>
-        /// <param name="str_messageBox">Строка вида id_client::id_adresse::message::time</param>
-        /// <returns></returns>
-        int SendMessageTo(int chat_id, string str_messageBox);
+        /// <param name="id_client">id отправителя</param>
+        /// <param name="str_messageBox">Строка вида message::time</param>
+        /// <returns>Возвращает id чата если все прошло успешно иначе -1</returns>
+        int SendMessageTo(int chat_id, string str_messageBox, int id_client, string id_recipient);
     }
 }

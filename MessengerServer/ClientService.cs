@@ -37,7 +37,7 @@ namespace MessengerServer
                 return;
             }
 
-            string EnterResult = "";
+
             while(_IdClient == null || _IdClient < 0) //Цикл входа и регистрации.
             {
 
@@ -71,17 +71,20 @@ namespace MessengerServer
                     string[] arrRequest = request.Split("::");
                     if (arrRequest[0] == "SEND")
                     {
-                        if (arrRequest.Length < 5)
+                        if (arrRequest.Length < 4)
                         {
                             SendAnswer(_stream, "WRONG_TEMPLATE");
                             continue;
                         }
 
-                        if (arrRequest.Length > 3)
-                            for (int i = 5; i < arrRequest.Length; i++)
-                                arrRequest[2] += arrRequest[i];
+                        if (arrRequest.Length > 4)
+                            for (int i = 4; i < arrRequest.Length; i++)
+                                arrRequest[3] += arrRequest[i];
 
-                        SendMessageToClient(_IdClient.ToString(), arrRequest[1], arrRequest[2]);
+
+                        if (_IdClient == null) throw new ArgumentNullException(nameof(_IdClient));
+                        SendMessageToClient(arrRequest[1], (int)_IdClient, arrRequest[2], arrRequest[3]);
+
                     }
                     else if (false) { }
                     else
@@ -166,18 +169,19 @@ namespace MessengerServer
 
 
         /// <param name="id_client">id отправителя</param>
-        /// <param name="id_addressee">id получателя сообщения</param>
+        /// <param name="id_recipient">id получателя(ей) сообщения</param>
         /// <param name="message"></param>
-        /// <param name="_stream"></param>
-        private static void SendMessageToClient(string str_chat_id, string? id_client, string id_addressee, string message, string time)
+        private static void SendMessageToClient(string str_chat_id, int id_client, string id_recipient, string message)
         {
             /* Если ранее занятой комнаты нет, то она выделяется и записывается сообщение,  
             иначе проверяется доступ и после записывается сообщение. */
+                        
 
             int chat_id = str_chat_id == "null" ? -1 : int.Parse(str_chat_id);
 
+            string messageBox = message + "::" + DateTime.Now.ToString();
+            DataBase.SendMessageTo(chat_id, messageBox, id_client, id_recipient);
             
-
         }
     }
 }
